@@ -4,18 +4,32 @@ import { useFileManager } from '@/hooks/useFileManager';
 import { Button } from '@/components/ui/button';
 import { X, Download, ChevronLeft, ChevronRight, FileIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { FileItem } from '@/types';
 
-const FilePreview = () => {
+interface FilePreviewProps {
+  file?: FileItem;
+  previewUrl?: string;
+}
+
+const FilePreview = ({ file, previewUrl: initialPreviewUrl }: FilePreviewProps = {}) => {
   const { selectedFile, getFilePreviewUrl, setSelectedFile, downloadFile } = useFileManager();
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(initialPreviewUrl || null);
+  const [loading, setLoading] = useState(!initialPreviewUrl);
+  
+  const currentFile = file || selectedFile;
   
   useEffect(() => {
-    if (!selectedFile) return;
+    if (initialPreviewUrl) {
+      setPreviewUrl(initialPreviewUrl);
+      setLoading(false);
+      return;
+    }
+    
+    if (!currentFile) return;
     
     const loadPreview = async () => {
       setLoading(true);
-      const url = await getFilePreviewUrl(selectedFile.id);
+      const url = await getFilePreviewUrl(currentFile.id);
       setPreviewUrl(url);
       setLoading(false);
     };
@@ -24,23 +38,25 @@ const FilePreview = () => {
     
     // Clean up preview URL when component unmounts
     return () => {
-      if (previewUrl) {
+      if (previewUrl && !initialPreviewUrl) {
         URL.revokeObjectURL(previewUrl);
       }
     };
-  }, [selectedFile, getFilePreviewUrl]);
+  }, [currentFile, getFilePreviewUrl, initialPreviewUrl]);
   
-  if (!selectedFile) return null;
+  if (!currentFile) return null;
   
   const handleDownload = () => {
-    if (selectedFile) {
-      downloadFile(selectedFile.id);
+    if (currentFile) {
+      downloadFile(currentFile.id);
     }
   };
   
   const handleClose = () => {
-    setSelectedFile(null);
-    if (previewUrl) {
+    if (!file) { // Only handle closing if using internal state
+      setSelectedFile(null);
+    }
+    if (previewUrl && !initialPreviewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
@@ -68,13 +84,13 @@ const FilePreview = () => {
       );
     }
     
-    switch (selectedFile.type) {
+    switch (currentFile.type) {
       case 'image':
         return (
           <div className="flex h-full items-center justify-center">
             <img
               src={previewUrl}
-              alt={selectedFile.name}
+              alt={currentFile.name}
               className="max-h-full max-w-full object-contain"
             />
           </div>
@@ -84,7 +100,7 @@ const FilePreview = () => {
         return (
           <iframe
             src={`${previewUrl}#toolbar=0`}
-            title={selectedFile.name}
+            title={currentFile.name}
             className="h-full w-full"
           />
         );
@@ -108,7 +124,7 @@ const FilePreview = () => {
             <div className="mb-4 rounded-full bg-primary/10 p-8">
               <FileIcon className="h-16 w-16 text-primary" />
             </div>
-            <h3 className="mb-4 text-xl font-medium">{selectedFile.name}</h3>
+            <h3 className="mb-4 text-xl font-medium">{currentFile.name}</h3>
             <audio src={previewUrl} controls>
               Your browser does not support the audio tag.
             </audio>
@@ -136,7 +152,7 @@ const FilePreview = () => {
           <Button variant="ghost" size="icon" onClick={handleClose}>
             <X className="h-4 w-4" />
           </Button>
-          <h2 className="text-lg font-medium">{selectedFile.name}</h2>
+          <h2 className="text-lg font-medium">{currentFile.name}</h2>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleDownload}>

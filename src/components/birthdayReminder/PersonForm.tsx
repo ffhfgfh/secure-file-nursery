@@ -20,7 +20,7 @@ const PersonForm = ({ person, onClose, onSave }: PersonFormProps) => {
       ? new Date(person.birthday).toISOString().split('T')[0] 
       : ''
   );
-  const [gender, setGender] = useState(person?.gender || 'other');
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>(person?.gender || 'other');
   const [interests, setInterests] = useState(person?.interests?.join(', ') || '');
   
   const handleSubmit = (e: React.FormEvent) => {
@@ -34,12 +34,19 @@ const PersonForm = ({ person, onClose, onSave }: PersonFormProps) => {
       name,
       relationship,
       birthday: new Date(birthday),
-      gender: gender as 'male' | 'female' | 'other',
+      gender,
       interests: interests.split(',').map(i => i.trim()).filter(Boolean),
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
     };
     
     onSave(newPerson);
+  };
+  
+  const handleGenderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    if (value === 'male' || value === 'female' || value === 'other') {
+      setGender(value);
+    }
   };
   
   return (
@@ -90,7 +97,7 @@ const PersonForm = ({ person, onClose, onSave }: PersonFormProps) => {
             <select
               id="gender"
               value={gender}
-              onChange={(e) => setGender(e.target.value)}
+              onChange={handleGenderChange}
               className="w-full rounded-md border border-input bg-background px-3 py-2"
             >
               <option value="male">Male</option>

@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { useFileManager } from '@/hooks/useFileManager';
 import { Button } from '@/components/ui/button';
@@ -62,12 +61,10 @@ const FileList = () => {
   const files = getCurrentFiles();
   const subfolders = getCurrentSubfolders();
   
-  // Handle view toggle
   const toggleView = useCallback((type: 'grid' | 'list') => {
     setViewMode(prev => ({ ...prev, type }));
   }, [setViewMode]);
   
-  // Handle sort change
   const handleSortChange = useCallback((type: SortConfig['type']) => {
     setSortConfig(prev => {
       if (prev.type === type) {
@@ -77,7 +74,6 @@ const FileList = () => {
     });
   }, [setSortConfig]);
   
-  // Handle item click
   const handleItemClick = useCallback((id: string, isFolder: boolean) => {
     if (isFolder) {
       const folder = subfolders.find(f => f.id === id);
@@ -85,7 +81,6 @@ const FileList = () => {
         navigateToFolder(folder.path);
       }
     } else {
-      // Toggle selection
       setSelectedItems(prev => {
         if (prev.includes(id)) {
           return prev.filter(itemId => itemId !== id);
@@ -95,12 +90,10 @@ const FileList = () => {
     }
   }, [navigateToFolder, setSelectedItems, subfolders]);
   
-  // Handle double click on file
   const handleFileDoubleClick = useCallback((id: string) => {
     downloadFile(id);
   }, [downloadFile]);
   
-  // Handle bulk actions
   const handleBulkDownload = useCallback(() => {
     selectedItems.forEach(id => {
       downloadFile(id);
@@ -111,7 +104,6 @@ const FileList = () => {
     deleteItems(selectedItems);
   }, [deleteItems, selectedItems]);
   
-  // Get breadcrumb segments
   const getBreadcrumbs = useCallback(() => {
     if (currentPath === '/') {
       return [{ name: 'Home', path: '/' }];
@@ -137,7 +129,6 @@ const FileList = () => {
   const pathParts = currentPath.split('/').filter(Boolean);
   const folderName = pathParts.length > 0 ? pathParts[pathParts.length - 1] : 'Home';
   
-  // Check if current directory is empty
   const isEmpty = files.length === 0 && subfolders.length === 0;
   
   return (
@@ -311,8 +302,7 @@ const FileList = () => {
                             file={file}
                             isSelected={selectedItems.includes(file.id)}
                             view={viewMode.type}
-                            onClick={() => handleItemClick(file.id, false)}
-                            onDoubleClick={() => handleFileDoubleClick(file.id)}
+                            onSelect={() => handleItemClick(file.id, false)}
                           />
                         ))}
                       </div>
