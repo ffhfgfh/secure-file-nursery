@@ -1,210 +1,137 @@
 
-import { useMemo } from 'react';
-import { FileItem as FileItemType } from '@/types';
-import { 
-  FileIcon, 
-  ImageIcon, 
-  FileTextIcon, 
-  FileVideoIcon, 
-  FileAudioIcon, 
-  FileArchiveIcon, 
-  FileCode,
-  FilePdf,
-  MoreVertical,
-  Download,
-  Trash2,
-  Lock,
-  Copy,
-  Eye,
-  Star
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FileItem as FileItemType } from '@/types/index';
+import { Card, CardContent } from '@/components/ui/card';
+import { getIcon } from '@/lib/file-icons';
 import { useFileManager } from '@/hooks/useFileManager';
-import { Button } from '@/components/ui/button';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
+import { formatFileSize } from '@/hooks/useFileManager';
+import { File, FileText, Image, FileVideo, FileAudio, Archive, Code, File as FileIcon } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import FilePreview from './FilePreview';
 
 interface FileItemProps {
   file: FileItemType;
-  isSelected: boolean;
   view: 'grid' | 'list';
-  onClick: () => void;
-  onDoubleClick: () => void;
+  onSelect: (id: string) => void;
+  isSelected: boolean;
 }
 
-const FileItem = ({ file, isSelected, view, onClick, onDoubleClick }: FileItemProps) => {
-  const { downloadFile, deleteItems, formatFileSize, setSelectedFile } = useFileManager();
+const FileItem = ({ file, view, onSelect, isSelected }: FileItemProps) => {
+  const { getFilePreviewUrl } = useFileManager();
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   
-  const fileIcon = useMemo(() => {
+  // Get icon based on file type
+  const getFileIcon = () => {
     switch (file.type) {
       case 'image':
-        return <ImageIcon className="h-8 w-8 text-blue-500" />;
+        return <Image />;
       case 'document':
-        return <FileTextIcon className="h-8 w-8 text-green-500" />;
+        return <FileText />;
       case 'video':
-        return <FileVideoIcon className="h-8 w-8 text-pink-500" />;
+        return <FileVideo />;
       case 'audio':
-        return <FileAudioIcon className="h-8 w-8 text-purple-500" />;
+        return <FileAudio />;
       case 'archive':
-        return <FileArchiveIcon className="h-8 w-8 text-yellow-500" />;
+        return <Archive />;
       case 'code':
-        return <FileCode className="h-8 w-8 text-gray-500" />;
+        return <Code />;
       case 'pdf':
-        return <FilePdf className="h-8 w-8 text-red-500" />;
+        return <FileIcon />;
       default:
-        return <FileIcon className="h-8 w-8 text-gray-400" />;
+        return <File />;
     }
-  }, [file.type]);
-  
-  const handleView = () => {
-    setSelectedFile(file);
   };
   
-  const handleDownload = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    downloadFile(file.id);
+  const handleClick = (e: React.MouseEvent) => {
+    if (e.detail === 1) {
+      // Single click - select
+      onSelect(file.id);
+    } else if (e.detail === 2) {
+      // Double click - preview
+      handlePreview();
+    }
   };
   
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    deleteItems([file.id]);
+  const handlePreview = async () => {
+    // For image files, try to get a preview URL
+    if (['image', 'pdf', 'video', 'audio'].includes(file.type)) {
+      const url = await getFilePreviewUrl(file.id);
+      if (url) {
+        setPreviewUrl(url);
+        setPreviewOpen(true);
+      }
+    }
   };
   
-  if (view === 'grid') {
-    return (
-      <div 
-        className={`group relative flex h-44 w-40 flex-col rounded-lg border bg-card p-3 transition-all hover:border-primary ${isSelected ? 'border-primary bg-primary/5 ring-1 ring-primary' : ''}`}
-        onClick={onClick}
-        onDoubleClick={onDoubleClick}
-      >
-        <div className="mb-2 flex flex-1 items-center justify-center">
-          {fileIcon}
-        </div>
-        <div className="mt-auto space-y-1 text-center">
-          <div className="flex items-center justify-center gap-1">
-            <p className="line-clamp-2 break-all text-sm font-medium">{file.name}</p>
-            {file.encrypted && <Lock className="h-3 w-3 text-primary" />}
-          </div>
-          <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
-        </div>
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-1 top-1 h-8 w-8 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleView}>
-              <Eye className="mr-2 h-4 w-4" />
-              Preview
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDownload}>
-              <Download className="mr-2 h-4 w-4" />
-              Download
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Copy className="mr-2 h-4 w-4" />
-              Copy
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Star className="mr-2 h-4 w-4" />
-              Add to favorites
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    );
-  }
+  const cardClasses = `
+    relative cursor-pointer border-2 transition-all duration-200
+    ${isSelected ? 'border-primary bg-primary/5' : 'border-transparent hover:bg-accent'}
+    ${view === 'grid' ? 'p-4 flex flex-col items-center text-center' : 'p-2 flex items-center gap-4'}
+  `;
+  
+  const iconClasses = `
+    ${view === 'grid' ? 'text-3xl mb-2' : 'text-xl'}
+    ${file.type === 'image' ? 'text-blue-500' : ''}
+    ${file.type === 'document' ? 'text-green-500' : ''}
+    ${file.type === 'video' ? 'text-red-500' : ''}
+    ${file.type === 'audio' ? 'text-purple-500' : ''}
+    ${file.type === 'archive' ? 'text-yellow-500' : ''}
+    ${file.type === 'code' ? 'text-gray-500' : ''}
+    ${file.type === 'pdf' ? 'text-red-600' : ''}
+  `;
+  
+  // Clean up preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
   
   return (
-    <div 
-      className={`group flex items-center rounded-lg border p-3 transition-all hover:border-primary ${isSelected ? 'border-primary bg-primary/5 ring-1 ring-primary' : ''}`}
-      onClick={onClick}
-      onDoubleClick={onDoubleClick}
-    >
-      <div className="mr-3">{fileIcon}</div>
-      <div className="flex flex-1 items-center justify-between">
-        <div className="flex-1 overflow-hidden">
-          <div className="flex items-center gap-1">
-            <p className="truncate font-medium">{file.name}</p>
-            {file.encrypted && <Lock className="h-3 w-3 text-primary" />}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {formatFileSize(file.size)} · {file.lastModified.toLocaleDateString()}
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-full"
-            onClick={handleView}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-full"
-            onClick={handleDownload}
-          >
-            <Download className="h-4 w-4" />
-          </Button>
+    <>
+      <Card className={cardClasses} onClick={handleClick}>
+        <CardContent className={`p-0 ${view === 'grid' ? 'flex flex-col items-center' : 'flex-1'}`}>
+          {view === 'grid' ? (
+            <>
+              <div className={iconClasses}>{getFileIcon()}</div>
+              <div className="mt-2 text-sm font-medium truncate max-w-full">{file.name}</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {formatFileSize(file.size)}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={iconClasses}>{getFileIcon()}</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">{file.name}</div>
+                <div className="flex items-center text-xs text-muted-foreground">
+                  <span>{formatFileSize(file.size)}</span>
+                  <span className="mx-2">•</span>
+                  <span>{file.lastModified.toLocaleDateString()}</span>
+                </div>
+              </div>
+            </>
+          )}
           
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-full"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleView}>
-                <Eye className="mr-2 h-4 w-4" />
-                Preview
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleDownload}>
-                <Download className="mr-2 h-4 w-4" />
-                Download
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Copy className="mr-2 h-4 w-4" />
-                Copy
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Star className="mr-2 h-4 w-4" />
-                Add to favorites
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-    </div>
+          {file.encrypted && (
+            <div className="absolute top-1 right-1 bg-primary/10 text-primary text-[10px] px-1 rounded">
+              Encrypted
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {previewOpen && previewUrl && (
+        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+          <DialogContent className="max-w-4xl">
+            <FilePreview file={file} previewUrl={previewUrl} />
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 };
 
